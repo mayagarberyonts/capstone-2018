@@ -11,24 +11,24 @@ library(utils)
 library(tinytex)
 library(quantreg)
 library(broom)
+library(ggpubr)
+
 
 ######################################################################
 
 # Header = TRUE, if your excel file already has the headers in the  imported excel data frame #
 
-setwd("~/Desktop/Capstone_2017:18")
 mydata<-read.csv("Rdataformat_03132018.csv", header=TRUE)
 
-tbl_df(mydata)
+View(mydata) #viewing all my data before carpentry
 
-View(mydata)
+# Select only valuable columns
 
 finaldf <- select(mydata, Location, FullScallop_Number, T1_height, T1_width,
                   T1_length, T2_height, T2_width, T2_length, T2_whole_weight, 
                   T2_body_weight, T2_adductor, sex, mc_1_mode, mc_2_mean, mc_3_max, sex)
 
-
-filtered_df <- filter(finaldf, mc_1_mode!=-1)
+# Break down data into site specific tables
 
 TI_df <- slice(finaldf, 201:399)
 DB_df <- slice(finaldf, 1:170)
@@ -36,29 +36,20 @@ NB_df <- slice(finaldf, 171:200)
 
 DB_finaldf <- slice(DB_df, 2:170)
 
-################ Piping ###########################
+################ Variance Data Frame ###########################
 
 var_df <- mydata %>% 
   select(acini_1,acini_2,acini_3,acini_4,acini_5,acini_6,acini_7,acini_8,acini_9,acini_10,
          acini_11,acini_12,acini_13,acini_14,acini_15,acini_16,acini_17,acini_18,acini_19,
          acini_20,acini_21,acini_22,acini_23,acini_24,acini_25,acini_26,acini_27,acini_28,
-         acini_29,acini_30,acini_31,acini_32) %>% 
+         acini_29,acini_30,acini_31,acini_32) 
           mutate(var_df, acini_var = var(1:322))
 print(var_df)
-
-variances <- c()
-for (i in 1:nrow(mydata)){
-  indiv_var <- var(mydata[i, 13:44], na.rm=T)
-  variances <- c(variances, indiv_var)
-}
 
 # non dplyr #
 
 mean(as.numeric(DB_finaldf$T2_adductor),na.rm=TRUE)
 
-# analysis #
-
-install.packages("ggplot2")
 
 ###################################
 
@@ -80,7 +71,7 @@ ggplot(finaldf, aes(x=Location, y=T2_adductor)) +
   xlab("Site") +
   ylab("Adductor Diameter (mm)")
 
-kruskal.test(Location ~ T2_adductor, data = finaldf)
+ kruskal.test(Location ~ T2_adductor, data = finaldf)
 
 ############ Location vs Length ##### With Kruskal-Wallis Test
 
@@ -94,7 +85,8 @@ ggplot(finaldf, aes(x=Location, y=T2_length)) +
   ylab("Length (mm)") +
   xlab("Site")
 
-kruskal.test(Location ~ T2_length, data = finaldf)
+
+kruskal.test(Location ~ T2_length, data = finaldf) #test of power, Krusty Wallace
 
 
 # Adductor vs. maturation state #
@@ -116,15 +108,10 @@ ggplot(finaldf, aes(mc_1_mode, T2_adductor), na.rm=TRUE) +
 
 kruskal.test(mc_1_mode ~ T2_adductor, data = finaldf)
 
-# Run Spearmann Test instead of Krusty
-
-
-
-
 
 #### Maturation State vs. Location #######
 
-finaldf$mc_1_mode <- as.factor(finaldf$mc_1_mode)
+finaldf$mc_1_mode <- as.numeric(finaldf$mc_1_mode)
 finaldf$Location <- as.factor(finaldf$Location)
 
 ggplot(finaldf, aes(Location, mc_1_mode, na.rm = T)) +
@@ -135,11 +122,9 @@ ggplot(finaldf, aes(Location, mc_1_mode, na.rm = T)) +
   ggtitle("Maturation Stage vs. Site")+
   theme(plot.title = element_text(hjust = 0.5))+
   theme(legend.position = 'none') +
-  xlab('Site')
+  xlab('Site')+
+  ylim(0,5)
 
-# Make sure y axis is 1-5, not continuous.
-
-# FIX THIS
 
 kruskal.test(mc_1_mode ~ Location, data= finaldf)
 
@@ -177,8 +162,6 @@ ggplot(finaldf, aes(x=mc_1_mode, y=T2_height)) +
 kruskal.test(mc_1_mode ~ T2_height, data = finaldf)
 
 # Shell height vs. adductor size, put in linear regression #
-install.packages('ggpubr')
-library(ggpubr)
 
 
 plot1<- ggplot(finaldf, aes(T2_length, T2_adductor)) +
@@ -194,7 +177,7 @@ plot1<- ggplot(finaldf, aes(T2_length, T2_adductor)) +
   scale_x_continuous(limits = c(15,90))+
   annotate('text', label = 'p-value = 1.863815e-37', x = 75, y = 1.5)
   
-print(plot1)
+# p-value
 
 length_p <- lm( T2_length~T2_adductor, data = finaldf) %>% 
   summary()
@@ -213,6 +196,8 @@ plot2<- ggplot(finaldf, aes(T2_height, T2_adductor)) +
   theme(legend.position = 'none') +
   theme(plot.title = element_text(hjust = 0.5, face = 'bold', size = 20))+
   annotate('text', label = 'p-value = 5.037393e-39', x = 75, y = 1.5)
+
+# p-value
 
 height_p <- lm( T2_height~T2_adductor, data = finaldf) %>% 
   summary()
@@ -236,15 +221,20 @@ plot3<- ggplot(finaldf, aes(T2_width, T2_adductor)) +
   annotate('text', label = 'p-value = 4.380831e-30', x = 20, y = 2)+
   xlim(8,25)
 
-  width_p <- lm( T2_width~T2_adductor, data = finaldf) %>% 
+# p-value
+ 
+ width_p <- lm( T2_width~T2_adductor, data = finaldf) %>% 
     summary()
   tidy(width_p)
   glance(width_p)
   width_pvalue<- glance(width_p)$p.value
   print(width_pvalue)
   
-
+#build all the plots into one graph
 multiplot(plot1,plot2,plot3,cols = 1)
+
+
+
 # checking for correlation using cor()
 
 corr_h_adductor <- cor(x=finaldf$T2_length, y=as.numeric(finaldf$T2_adductor))
@@ -257,7 +247,11 @@ corr_h_adductor <- cor(x=finaldf$T2_width, y=as.numeric(finaldf$T2_adductor))
 print(corr_h_adductor)
 
 
-#########  Sex vs. Adductor ######
+#########  Sex vs. Maturation ######
+
+finaldf$sex <- as.factor(finaldf$sex)
+finaldf$mc_1_mode <- as.numeric(finaldf$mc_1_mode)
+
 ggplot(finaldf, aes(sex, mc_1_mode))+
   geom_jitter()+
   geom_boxplot()
@@ -266,11 +260,22 @@ finaldf$mc_1_mode <- as.numeric(finaldf$mc_1_mode)
 
 kruskal.test(mc_1_mode ~ sex, data = finaldf)
 
-finaldf$sex <- as.factor(finaldf$sex)
+
+# Sex vs. Adductor
+
+ggplot(finaldf, aes(sex, T2_adductor))+
+  geom_jitter()+
+  geom_boxplot()
+
+kruskal.test(T2_adductor ~ sex, data = finaldf)
+
+#no significant difference
+
+
 
 ######## Survivability ########
 
-DB_survival<-(66)
+DB_survival<-(66) #values are percentages of the total
 NB_survival<-(14)
 TI_survival<-(98)
 
@@ -279,11 +284,8 @@ percentage<- c(66,14,98)
 
 dfsurvival<- data.frame(location,percentage)
 
-ggplot(dfsurvival, aes(location))+
-  geom_bar(position ='dodge')
-
 dfsurvival$location <- as.factor(dfsurvival$location)
-dfsurvival$percentage <- as.numerica(dfsurvival$percentage)
+dfsurvival$percentage <- as.numeric(dfsurvival$percentage)
 
 hist(percentage, dfsurvival)
 
@@ -294,6 +296,8 @@ ggplot(dfsurvival, aes(x=location, y=percentage)) +
   ylab('Survival (%)')+
   ggtitle('Survivability')+
   theme(plot.title = element_text(hjust = 0.5))
+
+#survival was significantly different based on the site
 
 ############ Body Weight Shell Weight  ############
 
