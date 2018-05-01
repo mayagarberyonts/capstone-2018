@@ -1,14 +1,4 @@
-install.packages("tidyverse")
-install.packages("dplyr")
-install.packages("utils")
-install.packages('diveRsity')
-install.packages('ggplot2')
-install.packages("stargazer")
-install.packages("tinytex")
-install.packages('xtable')
-install.packages('quantreg')
-install.packages('broom')
-                 
+
 
 library(tidyr)
 library(dplyr)
